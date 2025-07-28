@@ -1,0 +1,11 @@
+---
+alwaysApply: true
+description:
+  - This is a monorepo for the Chord Muscle project, which is going to help you exercise/improve your guitar skills.
+  - The project is built with Next.js, Tailwind CSS, and TypeScript.
+  - The project is organized into two main folders:
+    - `apps`: This folder contains the main applications of the project.
+    - `packages`: This folder contains the shared libraries of the project.
+  - The project is using pnpm as the package manager.
+  - The project is using turbo as the build system.
+---
