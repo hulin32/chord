@@ -39,23 +39,20 @@ const detectFrequencies = async (audioBlob: Blob): Promise<number[]> => {
   const arrayBuffer = await audioBlob.arrayBuffer()
   const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
   
-  // Create offline context for analysis
-  const offlineContext = new OfflineAudioContext(
-    audioBuffer.numberOfChannels,
-    audioBuffer.length,
-    audioBuffer.sampleRate
-  )
+  // Use analyser node for frequency analysis
+  const analyser = audioContext.createAnalyser()
+  analyser.fftSize = 8192 // Higher FFT size for better frequency resolution
+  analyser.smoothingTimeConstant = 0.8
   
-  const source = offlineContext.createBufferSource()
+  const source = audioContext.createBufferSource()
   source.buffer = audioBuffer
-  
-  const analyser = offlineContext.createAnalyser()
-  analyser.fftSize = 4096
   source.connect(analyser)
-  analyser.connect(offlineContext.destination)
+  analyser.connect(audioContext.destination)
   
   source.start()
-  const renderedBuffer = await offlineContext.startRendering()
+  
+  // Wait a bit for the audio to play
+  await new Promise(resolve => setTimeout(resolve, 100))
   
   // Get frequency data
   const frequencyData = new Float32Array(analyser.frequencyBinCount)
@@ -63,8 +60,11 @@ const detectFrequencies = async (audioBlob: Blob): Promise<number[]> => {
   
   // Find peaks in frequency spectrum
   const peaks: number[] = []
-  const minDb = -60 // Minimum dB threshold
+  const minDb = -50 // Adjusted threshold for better detection
   const binWidth = audioContext.sampleRate / analyser.fftSize
+  
+  // Get the maximum value for normalization
+  const maxValue = Math.max(...frequencyData.filter(v => v !== -Infinity))
   
   for (let i = 1; i < frequencyData.length - 1; i++) {
     const current = frequencyData[i]
@@ -77,10 +77,11 @@ const detectFrequencies = async (audioBlob: Blob): Promise<number[]> => {
       next !== undefined &&
       current > minDb &&
       current > prev &&
-      current > next
+      current > next &&
+      current > maxValue - 30 // Only consider strong peaks
     ) {
       const frequency = i * binWidth
-      if (frequency >= 80 && frequency <= 1000) { // Guitar frequency range
+      if (frequency >= 70 && frequency <= 1200) { // Extended guitar frequency range
         peaks.push(frequency)
       }
     }
@@ -92,18 +93,32 @@ const detectFrequencies = async (audioBlob: Blob): Promise<number[]> => {
 
 // Check if detected frequencies match expected chord frequencies
 const matchFrequencies = (detected: number[], expected: number[]): boolean => {
-  const tolerance = 10 // Hz tolerance for frequency matching
+  // More forgiving tolerance for real-world guitar recordings
+  const tolerance = 20 // Hz tolerance for frequency matching
   let matchCount = 0
   
+  console.log('Checking frequency matches:')
   for (const expectedFreq of expected) {
-    const hasMatch = detected.some(detectedFreq => 
-      Math.abs(detectedFreq - expectedFreq) < tolerance
-    )
-    if (hasMatch) matchCount++
+    const hasMatch = detected.some(detectedFreq => {
+      const diff = Math.abs(detectedFreq - expectedFreq)
+      if (diff < tolerance) {
+        console.log(`  ✓ Found ${expectedFreq.toFixed(1)}Hz (detected: ${detectedFreq.toFixed(1)}Hz)`)
+        return true
+      }
+      return false
+    })
+    if (hasMatch) {
+      matchCount++
+    } else {
+      console.log(`  ✗ Missing ${expectedFreq.toFixed(1)}Hz`)
+    }
   }
   
-  // Consider it a match if at least 70% of expected frequencies are detected
-  return matchCount >= expected.length * 0.7
+  const percentage = (matchCount / expected.length * 100).toFixed(0)
+  console.log(`Matched ${matchCount}/${expected.length} frequencies (${percentage}%)`)
+  
+  // Consider it a match if at least 60% of expected frequencies are detected
+  return matchCount >= expected.length * 0.6
 }
 
 // Main function to analyze audio and check if it matches the chord
@@ -121,11 +136,18 @@ export async function analyzeAudio(audioBlob: Blob, chord: Chord): Promise<boole
     // Check if they match
     const isMatch = matchFrequencies(detectedFrequencies, expectedFrequencies)
     
-    // For demonstration purposes, we'll use a random success rate
-    // In a real implementation, you'd use proper frequency analysis
-    const randomSuccess = Math.random() > 0.3 // 70% success rate for demo
+    // Log for debugging
+    console.log('Expected frequencies:', expectedFrequencies)
+    console.log('Detected frequencies:', detectedFrequencies)
+    console.log('Match result:', isMatch)
     
-    return randomSuccess && audioBlob.size > 1000 // Ensure some audio was recorded
+    // Ensure some audio was recorded
+    if (audioBlob.size < 1000) {
+      console.log('Audio too short')
+      return false
+    }
+    
+    return isMatch
   } catch (error) {
     console.error("Error analyzing audio:", error)
     return false
