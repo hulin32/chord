@@ -61,7 +61,7 @@ export function ChordDiagram({ chord }: ChordDiagramProps) {
 
         {/* Open/Muted string indicators */}
         {chord.frets.map((fret, stringIndex) => {
-          const x = startX + (strings - 1 - stringIndex) * stringSpacing
+          const x = startX + stringIndex * stringSpacing
           const y = startY - 20
 
           if (fret === 0) {
@@ -106,7 +106,7 @@ export function ChordDiagram({ chord }: ChordDiagramProps) {
         {/* Finger positions */}
         {chord.frets.map((fret, stringIndex) => {
           if (fret && fret > 0) {
-            const x = startX + (strings - 1 - stringIndex) * stringSpacing
+            const x = startX + stringIndex * stringSpacing
             const y = startY + (fret - 0.5) * fretSpacing
             const finger = chord.fingers?.[stringIndex]
 
@@ -136,7 +136,7 @@ export function ChordDiagram({ chord }: ChordDiagramProps) {
         })}
 
         {/* String names at the bottom */}
-        {["E", "A", "D", "G", "B", "e"].reverse().map((note, i) => (
+        {["E", "A", "D", "G", "B", "e"].map((note, i) => (
           <text
             key={`string-name-${i}`}
             x={startX + i * stringSpacing}
