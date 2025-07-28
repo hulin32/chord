@@ -1,4 +1,5 @@
 import { type Chord } from "./chords"
+import { PitchDetector } from "pitchy"
 
 // Guitar string frequencies (in Hz) for standard tuning
 const GUITAR_FREQUENCIES = {
@@ -33,76 +34,57 @@ const getChordFrequencies = (chord: Chord): number[] => {
   return frequencies
 }
 
-// Analyze audio and detect frequencies using FFT
-const detectFrequencies = async (audioBlob: Blob): Promise<number[]> => {
+// Analyze audio using pitchy library for accurate pitch detection
+const detectPitches = async (audioBlob: Blob): Promise<number[]> => {
   const audioContext = new AudioContext()
   const arrayBuffer = await audioBlob.arrayBuffer()
   const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
   
-  // Use analyser node for frequency analysis
-  const analyser = audioContext.createAnalyser()
-  analyser.fftSize = 8192 // Higher FFT size for better frequency resolution
-  analyser.smoothingTimeConstant = 0.8
+  // Convert to mono if stereo
+  const channelData = audioBuffer.getChannelData(0)
   
-  const source = audioContext.createBufferSource()
-  source.buffer = audioBuffer
-  source.connect(analyser)
-  analyser.connect(audioContext.destination)
+  // Process audio in chunks to find multiple pitches
+  const pitches: number[] = []
+  const chunkSize = 4096
+  const overlap = 2048
+  const sampleRate = audioBuffer.sampleRate
   
-  source.start()
+  // Create pitch detector
+  const detector = PitchDetector.forFloat32Array(chunkSize)
   
-  // Wait a bit for the audio to play
-  await new Promise(resolve => setTimeout(resolve, 100))
-  
-  // Get frequency data
-  const frequencyData = new Float32Array(analyser.frequencyBinCount)
-  analyser.getFloatFrequencyData(frequencyData)
-  
-  // Find peaks in frequency spectrum
-  const peaks: number[] = []
-  const minDb = -50 // Adjusted threshold for better detection
-  const binWidth = audioContext.sampleRate / analyser.fftSize
-  
-  // Get the maximum value for normalization
-  const maxValue = Math.max(...frequencyData.filter(v => v !== -Infinity))
-  
-  for (let i = 1; i < frequencyData.length - 1; i++) {
-    const current = frequencyData[i]
-    const prev = frequencyData[i - 1]
-    const next = frequencyData[i + 1]
+  for (let i = 0; i < channelData.length - chunkSize; i += chunkSize - overlap) {
+    const chunk = channelData.slice(i, i + chunkSize)
+    const [pitch, clarity] = detector.findPitch(chunk, sampleRate)
     
-    if (
-      current !== undefined &&
-      prev !== undefined &&
-      next !== undefined &&
-      current > minDb &&
-      current > prev &&
-      current > next &&
-      current > maxValue - 30 // Only consider strong peaks
-    ) {
-      const frequency = i * binWidth
-      if (frequency >= 70 && frequency <= 1200) { // Extended guitar frequency range
-        peaks.push(frequency)
+    // Only consider pitches with good clarity
+    if (pitch > 0 && clarity > 0.85) {
+      // Check if this pitch is already detected (within tolerance)
+      const isDuplicate = pitches.some(p => Math.abs(p - pitch) < 5)
+      if (!isDuplicate && pitch >= 70 && pitch <= 1200) {
+        pitches.push(pitch)
       }
     }
   }
   
   audioContext.close()
-  return peaks
+  return pitches
 }
 
-// Check if detected frequencies match expected chord frequencies
+// Check if detected pitches match expected chord frequencies
 const matchFrequencies = (detected: number[], expected: number[]): boolean => {
-  // More forgiving tolerance for real-world guitar recordings
-  const tolerance = 20 // Hz tolerance for frequency matching
+  // Tolerance for pitch matching (in cents - 100 cents = 1 semitone)
+  const centsTolerance = 50 // Half a semitone
   let matchCount = 0
   
-  console.log('Checking frequency matches:')
+  console.log('Expected frequencies:', expected.map(f => f.toFixed(1) + 'Hz').join(', '))
+  console.log('Detected pitches:', detected.map(f => f.toFixed(1) + 'Hz').join(', '))
+  
   for (const expectedFreq of expected) {
     const hasMatch = detected.some(detectedFreq => {
-      const diff = Math.abs(detectedFreq - expectedFreq)
-      if (diff < tolerance) {
-        console.log(`  ✓ Found ${expectedFreq.toFixed(1)}Hz (detected: ${detectedFreq.toFixed(1)}Hz)`)
+      // Calculate difference in cents
+      const cents = 1200 * Math.log2(detectedFreq / expectedFreq)
+      if (Math.abs(cents) < centsTolerance) {
+        console.log(`  ✓ Found ${expectedFreq.toFixed(1)}Hz (detected: ${detectedFreq.toFixed(1)}Hz, ${cents.toFixed(0)} cents off)`)
         return true
       }
       return false
@@ -130,15 +112,15 @@ export async function analyzeAudio(audioBlob: Blob, chord: Chord): Promise<boole
     // Get expected frequencies for the chord
     const expectedFrequencies = getChordFrequencies(chord)
     
-    // Detect frequencies in the recorded audio
-    const detectedFrequencies = await detectFrequencies(audioBlob)
+    // Detect pitches in the recorded audio
+    const detectedPitches = await detectPitches(audioBlob)
     
     // Check if they match
-    const isMatch = matchFrequencies(detectedFrequencies, expectedFrequencies)
+    const isMatch = matchFrequencies(detectedPitches, expectedFrequencies)
     
     // Log for debugging
     console.log('Expected frequencies:', expectedFrequencies)
-    console.log('Detected frequencies:', detectedFrequencies)
+    console.log('Detected pitches:', detectedPitches)
     console.log('Match result:', isMatch)
     
     // Ensure some audio was recorded
