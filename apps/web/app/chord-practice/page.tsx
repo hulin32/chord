@@ -15,6 +15,7 @@ export default function ChordPracticePage() {
     type: null,
     message: ""
   })
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null)
   const audioChunks = useRef<Blob[]>([])
 
@@ -25,7 +26,7 @@ export default function ChordPracticePage() {
 
   const selectRandomChord = () => {
     const randomIndex = Math.floor(Math.random() * chords.length)
-    setCurrentChord(chords[randomIndex])
+    setCurrentChord(chords[randomIndex] ?? null)
     setFeedback({ type: null, message: "" })
   }
 
@@ -33,7 +34,7 @@ export default function ChordPracticePage() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       const recorder = new MediaRecorder(stream)
-      
+
       recorder.ondataavailable = (event) => {
         audioChunks.current.push(event.data)
       }
@@ -41,24 +42,42 @@ export default function ChordPracticePage() {
       recorder.onstop = async () => {
         const audioBlob = new Blob(audioChunks.current, { type: "audio/wav" })
         audioChunks.current = []
-        
+
         // Analyze the recorded audio
         if (currentChord) {
-          const isCorrect = await analyzeAudio(audioBlob, currentChord)
-          
-          if (isCorrect) {
-            setFeedback({
-              type: "success",
-              message: "Great! You played it correctly. Moving to the next chord..."
-            })
-            setTimeout(() => {
-              selectRandomChord()
-            }, 2000)
-          } else {
+          setIsAnalyzing(true)
+          setFeedback({
+            type: null,
+            message: "Analyzing your chord... Please wait."
+          })
+
+          try {
+            console.log("Starting audio analysis...")
+            const isCorrect = await analyzeAudio(audioBlob, currentChord)
+            console.log("Analysis complete, isCorrect:", isCorrect)
+
+            if (isCorrect) {
+              setFeedback({
+                type: "success",
+                message: "Great! You played it correctly. Moving to the next chord..."
+              })
+              setTimeout(() => {
+                selectRandomChord()
+              }, 2000)
+            } else {
+              setFeedback({
+                type: "error",
+                message: "Not quite right. Make sure you're pressing the correct strings and frets. Try again!"
+              })
+            }
+          } catch (error) {
+            console.error("Analysis failed:", error)
             setFeedback({
               type: "error",
-              message: "Not quite right. Make sure you're pressing the correct strings and frets. Try again!"
+              message: "Failed to analyze audio. Please try recording again."
             })
+          } finally {
+            setIsAnalyzing(false)
           }
         }
 
@@ -107,7 +126,7 @@ export default function ChordPracticePage() {
 
           <div className="flex justify-center gap-4">
             {!isRecording ? (
-              <Button onClick={startRecording} size="lg">
+              <Button onClick={startRecording} size="lg" disabled={isAnalyzing}>
                 Start Recording
               </Button>
             ) : (
@@ -115,14 +134,25 @@ export default function ChordPracticePage() {
                 Stop Recording
               </Button>
             )}
-            <Button onClick={selectRandomChord} size="lg" variant="outline">
+            <Button onClick={selectRandomChord} size="lg" variant="outline" disabled={isAnalyzing}>
               Skip Chord
             </Button>
           </div>
 
-          {feedback.type && (
-            <Alert className={feedback.type === "success" ? "border-green-500" : "border-red-500"}>
-              <AlertDescription className={feedback.type === "success" ? "text-green-700" : "text-red-700"}>
+          {feedback.message && (
+            <Alert className={
+              feedback.type === "success" ? "border-green-500" :
+                feedback.type === "error" ? "border-red-500" :
+                  "border-blue-500"
+            }>
+              <AlertDescription className={
+                feedback.type === "success" ? "text-green-700" :
+                  feedback.type === "error" ? "text-red-700" :
+                    "text-blue-700"
+              }>
+                {isAnalyzing && (
+                  <span className="inline-block animate-spin mr-2">⏳</span>
+                )}
                 {feedback.message}
               </AlertDescription>
             </Alert>
@@ -131,4 +161,4 @@ export default function ChordPracticePage() {
       </Card>
     </div>
   )
-} 
+}
