@@ -13,8 +13,8 @@ export const chords: Chord[] = [
   },
   {
     name: "G Major",
-    frets: [3, 2, 0, 0, 3, 3], // strings 6-1
-    fingers: [2, 1, 0, 0, 3, 4]
+    frets: [3, 2, 0, 0, 0, 3], // strings 6-1
+    fingers: [2, 1, 0, 0, 0, 3]
   },
   {
     name: "D Major",
