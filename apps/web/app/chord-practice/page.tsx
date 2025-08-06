@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@work
 import { Alert, AlertDescription } from "@workspace/ui/components/alert"
 import { ChordDiagram } from "@/components/chord-diagram"
 import { chords, type Chord } from "@/lib/chords"
-import { analyzeAudio } from "@/lib/audio-analyzer"
+import { analyzeAudio } from "@/lib/chord-analyzer"
 
 export default function ChordPracticePage() {
   const [currentChord, setCurrentChord] = useState<Chord | null>(null)

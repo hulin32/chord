@@ -3,19 +3,104 @@
   "ui": "tui",
   "tasks": {
     "build": {
-      "dependsOn": ["^build"],
-      "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": [".next/**", "!.next/cache/**"]
+      "dependsOn": [
+        "^build",
+        "typecheck"
+      ],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        ".env*"
+      ],
+      "outputs": [
+        ".next/**",
+        "!.next/cache/**",
+        "dist/**"
+      ]
+    },
+    "test": {
+      "dependsOn": [
+        "^build"
+      ],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "src/**",
+        "__tests__/**",
+        "*.test.*",
+        "*.spec.*"
+      ],
+      "outputs": [
+        "coverage/**"
+      ]
+    },
+    "test:run": {
+      "dependsOn": [
+        "^build"
+      ],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "src/**",
+        "__tests__/**",
+        "*.test.*",
+        "*.spec.*"
+      ],
+      "outputs": [
+        "coverage/**"
+      ]
+    },
+    "typecheck": {
+      "dependsOn": [
+        "^typecheck"
+      ],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "src/**",
+        "__tests__/**",
+        "*.ts",
+        "*.tsx"
+      ],
+      "outputs": []
     },
     "lint": {
-      "dependsOn": ["^lint"]
+      "dependsOn": [
+        "^lint"
+      ],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "src/**",
+        "__tests__/**",
+        "*.ts",
+        "*.tsx",
+        "*.js",
+        "*.jsx"
+      ],
+      "outputs": []
     },
-    "check-types": {
-      "dependsOn": ["^check-types"]
+    "lint:fix": {
+      "dependsOn": [
+        "^lint"
+      ],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "src/**",
+        "__tests__/**",
+        "*.ts",
+        "*.tsx",
+        "*.js",
+        "*.jsx"
+      ],
+      "outputs": []
     },
     "dev": {
+      "dependsOn": [
+        "^build"
+      ],
       "cache": false,
       "persistent": true
     }
-  }
+  },
+  "globalDependencies": [
+    "package.json",
+    "pnpm-workspace.yaml",
+    "turbo.json"
+  ]
 }

@@ -1,0 +1,29 @@
+{
+    "name": "@workspace/music-theory",
+    "version": "0.0.1",
+    "type": "module",
+    "private": true,
+    "exports": {
+        ".": {
+            "types": "./src/index.ts",
+            "default": "./src/index.ts"
+        }
+    },
+    "files": [
+        "src"
+    ],
+    "scripts": {
+        "test": "vitest",
+        "test:run": "vitest run",
+        "typecheck": "tsc --noEmit"
+    },
+    "dependencies": {
+        "@workspace/types": "workspace:*",
+        "tonal": "^6.4.2"
+    },
+    "devDependencies": {
+        "@workspace/typescript-config": "workspace:*",
+        "typescript": "^5.7.3",
+        "vitest": "^2.1.8"
+    }
+}

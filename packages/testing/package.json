@@ -1,0 +1,26 @@
+{
+    "name": "@workspace/testing",
+    "version": "0.0.1",
+    "type": "module",
+    "private": true,
+    "exports": {
+        ".": {
+            "types": "./src/index.ts",
+            "default": "./src/index.ts"
+        }
+    },
+    "files": [
+        "src"
+    ],
+    "scripts": {
+        "typecheck": "tsc --noEmit"
+    },
+    "dependencies": {
+        "@workspace/types": "workspace:*"
+    },
+    "devDependencies": {
+        "@workspace/typescript-config": "workspace:*",
+        "typescript": "^5.7.3",
+        "vitest": "^2.1.8"
+    }
+}

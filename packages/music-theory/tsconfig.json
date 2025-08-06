@@ -1,0 +1,10 @@
+{
+    "extends": "@workspace/typescript-config/base.json",
+    "include": [
+        "src/**/*",
+        "__tests__/**/*"
+    ],
+    "exclude": [
+        "node_modules"
+    ]
+}

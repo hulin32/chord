@@ -84,9 +84,8 @@ const mockMediaDevices = {
 }
 
 // Mock navigator
-Object.defineProperty(window, 'navigator', {
+Object.defineProperty(global, 'navigator', {
     value: {
-        ...window.navigator,
         mediaDevices: mockMediaDevices,
     },
     writable: true,
@@ -98,17 +97,14 @@ global.OfflineAudioContext = MockOfflineAudioContext as any
 global.webkitAudioContext = MockAudioContext as any
 
 // Mock window.AudioContext
-Object.defineProperty(window, 'AudioContext', {
-    value: MockAudioContext,
-    writable: true,
-})
-
-Object.defineProperty(window, 'OfflineAudioContext', {
-    value: MockOfflineAudioContext,
-    writable: true,
-})
-
-Object.defineProperty(window, 'webkitAudioContext', {
-    value: MockAudioContext,
+Object.defineProperty(global, 'window', {
+    value: {
+        AudioContext: MockAudioContext,
+        OfflineAudioContext: MockOfflineAudioContext,
+        webkitAudioContext: MockAudioContext,
+        navigator: {
+            mediaDevices: mockMediaDevices,
+        },
+    },
     writable: true,
 })

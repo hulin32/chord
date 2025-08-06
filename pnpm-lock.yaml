@@ -26,6 +26,15 @@ importers:
 
   apps/web:
     dependencies:
+      '@workspace/audio':
+        specifier: workspace:*
+        version: link:../../packages/audio
+      '@workspace/music-theory':
+        specifier: workspace:*
+        version: link:../../packages/music-theory
+      '@workspace/types':
+        specifier: workspace:*
+        version: link:../../packages/types
       '@workspace/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -44,9 +53,6 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
-      tonal:
-        specifier: ^6.4.2
-        version: 6.4.2
     devDependencies:
       '@types/node':
         specifier: ^20
@@ -63,9 +69,37 @@ importers:
       '@workspace/eslint-config':
         specifier: workspace:^
         version: link:../../packages/eslint-config
+      '@workspace/testing':
+        specifier: workspace:*
+        version: link:../../packages/testing
       '@workspace/typescript-config':
         specifier: workspace:*
         version: link:../../packages/typescript-config
+      jsdom:
+        specifier: ^25.0.1
+        version: 25.0.1
+      typescript:
+        specifier: ^5.7.3
+        version: 5.7.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@20.17.19)(@vitest/ui@2.1.9)(jsdom@25.0.1)(lightningcss@1.29.1)
+
+  packages/audio:
+    dependencies:
+      '@workspace/music-theory':
+        specifier: workspace:*
+        version: link:../music-theory
+      '@workspace/testing':
+        specifier: workspace:*
+        version: link:../testing
+      '@workspace/types':
+        specifier: workspace:*
+        version: link:../types
+    devDependencies:
+      '@workspace/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
       jsdom:
         specifier: ^25.0.1
         version: 25.0.1
@@ -114,6 +148,50 @@ importers:
       typescript-eslint:
         specifier: ^8.24.1
         version: 8.24.1(eslint@9.20.1(jiti@2.4.2))(typescript@5.7.3)
+
+  packages/music-theory:
+    dependencies:
+      '@workspace/types':
+        specifier: workspace:*
+        version: link:../types
+      tonal:
+        specifier: ^6.4.2
+        version: 6.4.2
+    devDependencies:
+      '@workspace/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      typescript:
+        specifier: ^5.7.3
+        version: 5.7.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@20.17.19)(@vitest/ui@2.1.9)(jsdom@25.0.1)(lightningcss@1.29.1)
+
+  packages/testing:
+    dependencies:
+      '@workspace/types':
+        specifier: workspace:*
+        version: link:../types
+    devDependencies:
+      '@workspace/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      typescript:
+        specifier: ^5.7.3
+        version: 5.7.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@20.17.19)(@vitest/ui@2.1.9)(jsdom@25.0.1)(lightningcss@1.29.1)
+
+  packages/types:
+    devDependencies:
+      '@workspace/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      typescript:
+        specifier: ^5.7.3
+        version: 5.7.3
 
   packages/typescript-config: {}
 
