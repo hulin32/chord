@@ -100,7 +100,3 @@ export async function analyzeAudio(audioBlob: Blob, expectedChord: ChordShape): 
         return false
     }
 }
-
-// Re-export types and utilities for backward compatibility
-export type { ChordDetectionResult } from '@workspace/types'
-export { AudioAnalyzer } from '@workspace/audio'
