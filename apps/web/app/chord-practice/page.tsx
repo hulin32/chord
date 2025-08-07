@@ -3,7 +3,7 @@ import { ChordPracticeClient } from "@/components/chord-practice-client"
 export default function ChordPracticePage() {
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8">
+    <div className="min-h-[calc(100vh-3.5rem)] bg-gradient-to-br from-blue-50 to-indigo-100 py-8">
       <div className="container mx-auto px-4 max-w-6xl">
         {/* Header Section */}
         <div className="text-center mb-8">
