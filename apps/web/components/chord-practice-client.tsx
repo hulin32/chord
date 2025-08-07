@@ -1,14 +1,15 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
+
 import { PracticeModeSelector } from "@/components/practice-mode-selector"
 import { ChordDisplay } from "@/components/chord-display"
 import { ControlsPanel } from "@/components/controls-panel"
-import { FeedbackPanel } from "@/components/feedback-panel"
 import { getAllChords, getRandomChordFromGroup, getRandomChord, type Chord } from "@/lib/chords"
 import { analyzeAudio } from "@/lib/chord-analyzer"
 
 type PracticeMode = "all" | "group" | "specific"
+type FeedbackState = "success" | "error" | null
 
 export function ChordPracticeClient() {
     const [currentChord, setCurrentChord] = useState<Chord | null>(null)
@@ -16,11 +17,9 @@ export function ChordPracticeClient() {
     const [selectedGroup, setSelectedGroup] = useState<string>("major-open")
     const [selectedChordNames, setSelectedChordNames] = useState<string[]>([])
     const [isRecording, setIsRecording] = useState(false)
-    const [feedback, setFeedback] = useState<{ type: "success" | "error" | null; message: string }>({
-        type: null,
-        message: ""
-    })
+
     const [isAnalyzing, setIsAnalyzing] = useState(false)
+    const [visualFeedback, setVisualFeedback] = useState<FeedbackState>(null)
     const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null)
     const audioChunks = useRef<Blob[]>([])
     const isHandlingChordSelection = useRef(false)
@@ -48,7 +47,7 @@ export function ChordPracticeClient() {
         }
 
         setCurrentChord(nextChord)
-        setFeedback({ type: null, message: "" })
+        setVisualFeedback(null)
     }, [practiceMode, selectedGroup, selectedChordNames])
 
     // Initialize with a random chord
@@ -127,46 +126,39 @@ export function ChordPracticeClient() {
                 // Analyze the recorded audio
                 if (currentChord) {
                     setIsAnalyzing(true)
-                    setFeedback({
-                        type: null,
-                        message: "Analyzing your chord... Please wait."
-                    })
+                    setVisualFeedback(null)
 
                     try {
-                        console.log("Starting audio analysis...")
                         const isCorrect = await analyzeAudio(audioBlob, currentChord)
-                        console.log("Analysis complete, isCorrect:", isCorrect)
 
                         if (isCorrect) {
-                            setFeedback({
-                                type: "success",
-                                message: "Great! You played it correctly. Moving to the next chord..."
-                            })
+                            setVisualFeedback("success")
+
                             // Auto-advance logic based on practice mode
                             if (practiceMode === "specific" && selectedChordNames.length <= 1) {
-                                setTimeout(() => {
-                                    setFeedback({
-                                        type: "success",
-                                        message: "Perfect! You can practice this chord again or select more chords."
-                                    })
-                                }, 2000)
+                                // No auto-advance, user needs to select more chords
+                                // Keep success feedback visible
                             } else {
                                 setTimeout(() => {
                                     selectNextChord()
-                                }, 2000)
+                                }, 3000)
                             }
                         } else {
-                            setFeedback({
-                                type: "error",
-                                message: "Not quite right. Make sure you're pressing the correct strings and frets. Try again!"
-                            })
+                            setVisualFeedback("error")
+
+                            // Clear error feedback after 3 seconds
+                            setTimeout(() => {
+                                setVisualFeedback(null)
+                            }, 3000)
                         }
                     } catch (error) {
                         console.error("Analysis failed:", error)
-                        setFeedback({
-                            type: "error",
-                            message: "Failed to analyze audio. Please try recording again."
-                        })
+                        setVisualFeedback("error")
+
+                        // Clear error feedback after 3 seconds
+                        setTimeout(() => {
+                            setVisualFeedback(null)
+                        }, 3000)
                     } finally {
                         setIsAnalyzing(false)
                     }
@@ -179,13 +171,9 @@ export function ChordPracticeClient() {
             recorder.start()
             setMediaRecorder(recorder)
             setIsRecording(true)
-            setFeedback({ type: null, message: "" })
         } catch (error) {
             console.error("Error accessing microphone:", error)
-            setFeedback({
-                type: "error",
-                message: "Could not access microphone. Please check your permissions."
-            })
+            // Could add visual feedback here if needed
         }
     }
 
@@ -215,7 +203,7 @@ export function ChordPracticeClient() {
 
             {/* Main Practice Area - Two Column Layout */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                <ChordDisplay currentChord={currentChord} practiceMode={practiceMode} />
+                <ChordDisplay currentChord={currentChord} practiceMode={practiceMode} feedback={visualFeedback} />
 
                 <div className="space-y-4">
                     <ControlsPanel
@@ -228,8 +216,6 @@ export function ChordPracticeClient() {
                         onStopRecording={stopRecording}
                         onSelectNextChord={selectNextChord}
                     />
-
-                    <FeedbackPanel feedback={feedback} isAnalyzing={isAnalyzing} />
                 </div>
             </div>
         </div>

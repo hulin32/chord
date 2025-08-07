@@ -2,13 +2,15 @@ import { ChordDiagram } from "@/components/chord-diagram"
 import { type Chord } from "@/lib/chords"
 
 type PracticeMode = "all" | "group" | "specific"
+type FeedbackState = "success" | "error" | null
 
 interface ChordDisplayProps {
     currentChord: Chord | null
     practiceMode: PracticeMode
+    feedback?: FeedbackState
 }
 
-export function ChordDisplay({ currentChord, practiceMode }: ChordDisplayProps) {
+export function ChordDisplay({ currentChord, practiceMode, feedback }: ChordDisplayProps) {
     return (
         <div className="bg-white rounded-xl shadow-lg p-6 text-center">
             <h2 className="text-2xl font-semibold text-gray-800 mb-4">Current Chord</h2>
@@ -16,7 +18,7 @@ export function ChordDisplay({ currentChord, practiceMode }: ChordDisplayProps) 
                 <>
                     <h3 className="text-5xl font-bold text-indigo-600 mb-6">{currentChord.name}</h3>
                     <div className="flex justify-center">
-                        <ChordDiagram chord={currentChord} />
+                        <ChordDiagram chord={currentChord} feedback={feedback} />
                     </div>
                 </>
             ) : (

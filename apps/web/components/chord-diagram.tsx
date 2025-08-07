@@ -1,10 +1,13 @@
 import { type Chord } from "@/lib/chords"
 
+type FeedbackState = "success" | "error" | null
+
 interface ChordDiagramProps {
   chord: Chord
+  feedback?: FeedbackState
 }
 
-export function ChordDiagram({ chord }: ChordDiagramProps) {
+export function ChordDiagram({ chord, feedback }: ChordDiagramProps) {
   const strings = 6
   const frets = 5
   const stringSpacing = 40
@@ -147,6 +150,45 @@ export function ChordDiagram({ chord }: ChordDiagramProps) {
             {note}
           </text>
         ))}
+
+        {/* Feedback overlays */}
+        {feedback === "error" && (
+          <rect
+            x={startX - 10}
+            y={startY - 30}
+            width={(strings - 1) * stringSpacing + 20}
+            height={frets * fretSpacing + 60}
+            fill="rgba(239, 68, 68, 0.3)"
+            stroke="rgba(239, 68, 68, 0.6)"
+            strokeWidth="3"
+            rx={8}
+            className="animate-pulse"
+          />
+        )}
+
+        {feedback === "success" && (
+          <g className="animate-bounce">
+            {/* Green circle background */}
+            <circle
+              cx={startX + ((strings - 1) * stringSpacing) / 2}
+              cy={startY + (frets * fretSpacing) / 2}
+              r={30}
+              fill="rgba(34, 197, 94, 0.9)"
+              stroke="rgba(34, 197, 94, 1)"
+              strokeWidth="3"
+            />
+            {/* Checkmark */}
+            <path
+              d={`M ${startX + ((strings - 1) * stringSpacing) / 2 - 12} ${startY + (frets * fretSpacing) / 2
+                } l 8 8 l 16 -16`}
+              stroke="white"
+              strokeWidth="4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              fill="none"
+            />
+          </g>
+        )}
       </svg>
     </div>
   )
