@@ -1,9 +1,7 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { Button } from "@workspace/ui/components/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card"
-import { Alert, AlertDescription } from "@workspace/ui/components/alert"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@workspace/ui/components/select"
 import { Label } from "@workspace/ui/components/label"
 import { Checkbox } from "@workspace/ui/components/checkbox"
@@ -27,20 +25,9 @@ export default function ChordPracticePage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null)
   const audioChunks = useRef<Blob[]>([])
+  const isHandlingChordSelection = useRef(false)
 
-  // Initialize with a random chord
-  useEffect(() => {
-    selectNextChord()
-  }, [])
-
-  // Update chord when practice mode or group changes
-  useEffect(() => {
-    if (practiceMode !== "specific") {
-      selectNextChord()
-    }
-  }, [practiceMode, selectedGroup])
-
-  const selectNextChord = () => {
+  const selectNextChord = useCallback(() => {
     let nextChord: Chord | null = null
 
     switch (practiceMode) {
@@ -64,13 +51,47 @@ export default function ChordPracticePage() {
 
     setCurrentChord(nextChord)
     setFeedback({ type: null, message: "" })
-  }
+  }, [practiceMode, selectedGroup, selectedChordNames])
+
+  // Initialize with a random chord
+  useEffect(() => {
+    selectNextChord()
+  }, [selectNextChord])
+
+  // Update chord when practice mode or group changes
+  useEffect(() => {
+    if (practiceMode !== "specific") {
+      selectNextChord()
+    }
+  }, [practiceMode, selectedGroup, selectNextChord])
 
   const handleChordSelection = (chordName: string, isSelected: boolean) => {
+    if (isHandlingChordSelection.current) {
+      return
+    }
+
+    isHandlingChordSelection.current = true
+
+    setTimeout(() => {
+      isHandlingChordSelection.current = false
+    }, 100)
+
     if (isSelected) {
-      setSelectedChordNames(prev => [...prev, chordName])
+      setSelectedChordNames(prev => {
+        // Prevent duplicate additions
+        if (prev.includes(chordName)) {
+          return prev
+        }
+        return [...prev, chordName]
+      })
     } else {
-      setSelectedChordNames(prev => prev.filter(name => name !== chordName))
+      setSelectedChordNames(prev => {
+        // Only remove if actually present
+        if (!prev.includes(chordName)) {
+          return prev
+        }
+        return prev.filter(name => name !== chordName)
+      })
     }
   }
 
@@ -90,7 +111,7 @@ export default function ChordPracticePage() {
     } else if (practiceMode === "specific" && selectedChordNames.length === 0) {
       setCurrentChord(null)
     }
-  }, [selectedChordNames, practiceMode])
+  }, [selectedChordNames, practiceMode, selectNextChord])
 
   const startRecording = async () => {
     try {
@@ -177,22 +198,25 @@ export default function ChordPracticePage() {
     }
   }
 
-  if (!currentChord) {
+  if (!currentChord && practiceMode !== "specific") {
     return <div>Loading...</div>
   }
 
   return (
-    <div className="container mx-auto p-8 max-w-2xl">
-      <Card>
-        <CardHeader className="text-center">
-          <CardTitle className="text-3xl">Guitar Chord Practice</CardTitle>
-          <CardDescription>
-            Play the chord shown below. Click "Start Recording" when you're ready!
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8">
+      <div className="container mx-auto px-4 max-w-6xl">
+        {/* Header Section */}
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold text-gray-900 mb-3">Guitar Chord Practice</h1>
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            Master your guitar chords with real-time audio analysis. Play the chord shown below and get instant feedback!
+          </p>
+        </div>
+
+        <div className="space-y-6">
           {/* Practice Mode Selection */}
-          <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+          <div className="bg-white rounded-xl shadow-lg p-5 space-y-4">
+            <h2 className="text-xl font-semibold text-gray-800 mb-3">Practice Settings</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="practice-mode">Practice Mode</Label>
@@ -276,9 +300,9 @@ export default function ChordPracticePage() {
                           <Checkbox
                             id={`chord-${chord.name}`}
                             checked={selectedChordNames.includes(chord.name)}
-                            onCheckedChange={(checked) =>
-                              handleChordSelection(chord.name, checked as boolean)
-                            }
+                            onCheckedChange={(checked) => {
+                              handleChordSelection(chord.name, checked === true)
+                            }}
                           />
                           <Label
                             htmlFor={`chord-${chord.name}`}
@@ -302,72 +326,109 @@ export default function ChordPracticePage() {
             )}
           </div>
 
-          <div className="text-center">
-            {currentChord ? (
-              <>
-                <h2 className="text-4xl font-bold mb-4">{currentChord.name}</h2>
-                <ChordDiagram chord={currentChord} />
-              </>
-            ) : (
-              <div className="py-12">
-                <h2 className="text-2xl font-bold mb-4 text-gray-500">
-                  {practiceMode === "specific" ?
-                    "Please select chords above to start practicing" :
-                    "Loading chord..."
-                  }
-                </h2>
-                <div className="w-64 h-64 bg-gray-100 rounded-lg mx-auto flex items-center justify-center">
-                  <span className="text-gray-400 text-lg">No chord selected</span>
+          {/* Main Practice Area - Two Column Layout */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+            {/* Left Column - Current Chord Display */}
+            <div className="bg-white rounded-xl shadow-lg p-6 text-center">
+              <h2 className="text-2xl font-semibold text-gray-800 mb-4">Current Chord</h2>
+              {currentChord ? (
+                <>
+                  <h3 className="text-5xl font-bold text-indigo-600 mb-6">{currentChord.name}</h3>
+                  <div className="flex justify-center">
+                    <ChordDiagram chord={currentChord} />
+                  </div>
+                </>
+              ) : (
+                <div className="py-8">
+                  <h3 className="text-2xl font-bold mb-4 text-gray-400">
+                    {practiceMode === "specific" ?
+                      "Please select chords above to start practicing" :
+                      "Loading chord..."
+                    }
+                  </h3>
+                  <div className="w-64 h-64 bg-gray-50 rounded-xl mx-auto flex items-center justify-center border-2 border-dashed border-gray-200">
+                    <span className="text-gray-400 text-lg">No chord selected</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Right Column - Controls and Feedback */}
+            <div className="space-y-4">
+              {/* Control Buttons */}
+              <div className="bg-white rounded-xl shadow-lg p-5">
+                <h2 className="text-xl font-semibold text-gray-800 mb-3">Practice Controls</h2>
+                <div className="space-y-3">
+                  {!isRecording ? (
+                    <Button
+                      onClick={startRecording}
+                      size="lg"
+                      disabled={isAnalyzing || !currentChord}
+                      className="w-full px-6 py-2.5 text-base bg-green-600 hover:bg-green-700"
+                    >
+                      🎤 Start Recording
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={stopRecording}
+                      size="lg"
+                      variant="destructive"
+                      className="w-full px-6 py-2.5 text-base"
+                    >
+                      ⏹️ Stop Recording
+                    </Button>
+                  )}
+                  <Button
+                    onClick={selectNextChord}
+                    size="lg"
+                    variant="outline"
+                    disabled={isAnalyzing || (practiceMode === "specific" && selectedChordNames.length <= 1)}
+                    className="w-full px-6 py-2.5 text-base"
+                  >
+                    {practiceMode === "specific" && selectedChordNames.length <= 1 ?
+                      "Select Multiple Chords" :
+                      practiceMode === "specific" ?
+                        "⏭️ Next Chord" :
+                        "⏭️ Skip Chord"
+                    }
+                  </Button>
                 </div>
               </div>
-            )}
-          </div>
 
-          <div className="flex justify-center gap-4">
-            {!isRecording ? (
-              <Button onClick={startRecording} size="lg" disabled={isAnalyzing || !currentChord}>
-                Start Recording
-              </Button>
-            ) : (
-              <Button onClick={stopRecording} size="lg" variant="destructive">
-                Stop Recording
-              </Button>
-            )}
-            <Button
-              onClick={selectNextChord}
-              size="lg"
-              variant="outline"
-              disabled={isAnalyzing || (practiceMode === "specific" && selectedChordNames.length <= 1)}
-            >
-              {practiceMode === "specific" && selectedChordNames.length <= 1 ?
-                "Select Multiple Chords" :
-                practiceMode === "specific" ?
-                  "Next Chord" :
-                  "Skip Chord"
-              }
-            </Button>
+              {/* Feedback Section */}
+              {feedback.message && (
+                <div className={`rounded-xl shadow-lg p-5 ${feedback.type === "success" ? "bg-green-50 border-l-4 border-green-500" :
+                  feedback.type === "error" ? "bg-red-50 border-l-4 border-red-500" :
+                    "bg-blue-50 border-l-4 border-blue-500"
+                  }`}>
+                  <div className={`flex items-start text-base font-medium ${feedback.type === "success" ? "text-green-800" :
+                    feedback.type === "error" ? "text-red-800" :
+                      "text-blue-800"
+                    }`}>
+                    <div className="flex-shrink-0 mr-3 mt-1">
+                      {isAnalyzing && (
+                        <span className="inline-block animate-spin text-xl">⏳</span>
+                      )}
+                      {feedback.type === "success" && !isAnalyzing && (
+                        <span className="text-xl">✅</span>
+                      )}
+                      {feedback.type === "error" && !isAnalyzing && (
+                        <span className="text-xl">❌</span>
+                      )}
+                      {!feedback.type && !isAnalyzing && (
+                        <span className="text-xl">ℹ️</span>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      {feedback.message}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
-
-          {feedback.message && (
-            <Alert className={
-              feedback.type === "success" ? "border-green-500" :
-                feedback.type === "error" ? "border-red-500" :
-                  "border-blue-500"
-            }>
-              <AlertDescription className={
-                feedback.type === "success" ? "text-green-700" :
-                  feedback.type === "error" ? "text-red-700" :
-                    "text-blue-700"
-              }>
-                {isAnalyzing && (
-                  <span className="inline-block animate-spin mr-2">⏳</span>
-                )}
-                {feedback.message}
-              </AlertDescription>
-            </Alert>
-          )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   )
 }
