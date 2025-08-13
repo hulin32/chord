@@ -74,8 +74,10 @@ export function extractFrequenciesFromAudioData(channelData: Float32Array, sampl
             const mag3 = freq * 3 < nyquist ? goertzelMagnitude(segment, sampleRate, freq * 3) : 0
             score += magFund + 0.5 * mag2 + 0.25 * mag3
         }
-        mags[midi] = score
-        candidates.push({ midi, frequency: freq, magnitude: score })
+        // Bass emphasis: favor low fundamentals typical of guitar chords (E/A/D strings)
+        const weighted = freq < 120 ? score * 1.6 : freq < 200 ? score * 1.25 : score
+        mags[midi] = weighted
+        candidates.push({ midi, frequency: freq, magnitude: weighted })
     }
 
     // Keep only local maxima across semitone neighborhood to avoid flat noise bands
