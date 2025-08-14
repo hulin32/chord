@@ -5,37 +5,30 @@ import { readFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { decode } from 'wav-decoder'
+import { frequenciesToNotes, detectChordsFromNotes } from '@workspace/music-theory'
 
-// Helper: Identify G chord from detected frequencies (G major: G, B, D)
-function isGChord(frequencies: number[], tolerance = 10): boolean {
-    const targets = [
-        [98, 196, 392],      // G
-        [123.47, 246.94, 493.88], // B
-        [146.83, 293.66, 587.33]  // D
-    ]
-    const found = [false, false, false]
-    for (const f of frequencies) {
-        if (targets[0]?.some(t => Math.abs(f - t) < tolerance)) found[0] = true
-        if (targets[1]?.some(t => Math.abs(f - t) < tolerance)) found[1] = true
-        if (targets[2]?.some(t => Math.abs(f - t) < tolerance)) found[2] = true
-    }
-    return found.every(Boolean)
+// Helper: Identify G chord using audio-analyzer.ts logic
+function isGChord(frequencies: number[]): boolean {
+    const detectedNotes = frequenciesToNotes(frequencies)
+    const detectedChords = detectChordsFromNotes(detectedNotes)
+    
+    // Check if any detected chord is a G major chord (including inversions)
+    return detectedChords.some(chord => 
+        chord.root === 'G' && 
+        (chord.quality.includes('M') || chord.quality.includes('major') || chord.quality === '')
+    )
 }
 
-// Helper: Identify C chord (C major: C, E, G)
-function isCChord(frequencies: number[], tolerance = 10): boolean {
-    const targets = [
-        [130.81, 261.63, 523.25], // C
-        [164.81, 329.63, 659.25], // E
-        [98, 196, 392]            // G
-    ]
-    const found = [false, false, false]
-    for (const f of frequencies) {
-        if (targets[0]?.some(t => Math.abs(f - t) < tolerance)) found[0] = true
-        if (targets[1]?.some(t => Math.abs(f - t) < tolerance)) found[1] = true
-        if (targets[2]?.some(t => Math.abs(f - t) < tolerance)) found[2] = true
-    }
-    return found.every(Boolean)
+// Helper: Identify C chord using audio-analyzer.ts logic
+function isCChord(frequencies: number[]): boolean {
+    const detectedNotes = frequenciesToNotes(frequencies)
+    const detectedChords = detectChordsFromNotes(detectedNotes)
+    
+    // Check if any detected chord is a C major chord (including inversions)
+    return detectedChords.some(chord => 
+        chord.root === 'C' && 
+        (chord.quality.includes('M') || chord.quality.includes('major') || chord.quality === '')
+    )
 }
 
 // Get current directory in ES module
@@ -99,11 +92,11 @@ describe('FFTAnalyzer', () => {
 
     describe('FFTAnalyzer - G chord audio files', () => {
         const chordFiles = [
-            'g_chord_1.wav',
-            'g_chord_2.wav',
-            'g_chord_3.wav'
+            'g1.wav',
+            'g2.wav',
+            'g3.wav'
         ]
-        const dataDir = join(__dirname, '../../data/chords/g')
+        const dataDir = join(__dirname, './../data/chords/g')
 
         chordFiles.forEach((file) => {
             it(`should detect G chord in ${file}`, async () => {

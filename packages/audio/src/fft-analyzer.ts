@@ -154,40 +154,6 @@ function goertzelMagnitude(samples: Float32Array, sampleRate: number, targetFreq
 }
 
 /**
- * Simple peak detection without full FFT (fallback method)
- */
-function findSimplePeaks(data: Float32Array, sampleRate: number): Frequency[] {
-    const peaks: Frequency[] = []
-    const windowSize = 32
-    const threshold = 0.01 // Reduced threshold for better sensitivity
-
-    for (let i = windowSize; i < data.length - windowSize; i++) {
-        const current = Math.abs(data[i] || 0)
-
-        if (current > threshold) {
-            // Check if this is a local maximum
-            let isMax = true
-            for (let j = i - windowSize; j <= i + windowSize; j++) {
-                if (j !== i && Math.abs(data[j] || 0) > current) {
-                    isMax = false
-                    break
-                }
-            }
-
-            if (isMax) {
-                // Estimate frequency based on zero crossings
-                const frequency = estimateFrequency(data, i, sampleRate)
-                if (frequency >= 80 && frequency <= 1500) {
-                    peaks.push(frequency)
-                }
-            }
-        }
-    }
-
-    return peaks
-}
-
-/**
  * Estimate frequency from zero crossings (fallback method)
  */
 function estimateFrequency(data: Float32Array, centerIndex: number, sampleRate: number): Frequency {
