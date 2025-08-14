@@ -8,8 +8,8 @@ export function extractDominantFrequenciesFromFFT(
     sampleRate: number,
     fftSize: number
 ): Frequency[] {
-    const frequencies: Frequency[] = []
     const binSize = sampleRate / fftSize
+    const candidatePeaks: FrequencyPeak[] = []
 
     console.log(`FFT analysis: sampleRate=${sampleRate}, fftSize=${fftSize}, binSize=${binSize.toFixed(2)}Hz`)
 
@@ -28,31 +28,24 @@ export function extractDominantFrequenciesFromFFT(
 
         // Focus on musical frequencies (80Hz to 2000Hz) and find peaks above threshold
         if (frequency >= 80 && frequency <= 2000 && current > threshold) {
-            // Check if this is a peak
             if (current >= previous && current >= next) {
-                // Add some prominence check - peak should be significantly higher than neighbors
                 const prominence = current - Math.max(previous, next)
                 if (prominence >= 5) {
-                    frequencies.push(frequency)
-                    console.log(`Found peak: ${frequency.toFixed(1)}Hz (amplitude: ${current}, prominence: ${prominence})`)
+                    candidatePeaks.push({ frequency, amplitude: current, prominence })
                 }
             }
         }
     }
 
-    // Sort by amplitude (frequency data corresponds to amplitude at each frequency)
-    const frequencyAmplitudes = frequencies.map(freq => {
-        const bin = Math.round(freq / binSize)
-        return { frequency: freq, amplitude: frequencyData[bin] || 0 }
-    })
+    // Sort by amplitude (desc)
+    const sortedPeaks = candidatePeaks.sort((a, b) => b.amplitude - a.amplitude)
 
-    frequencyAmplitudes.sort((a, b) => b.amplitude - a.amplitude)
+    // Filter out harmonic overtones to keep likely fundamentals
+    const fundamentals = filterHarmonicPeaks(sortedPeaks, { maxMultiple: 5, toleranceCents: 35 })
 
-    // Return top 12 frequencies (to capture harmonics of a chord)
-    const topFrequencies = frequencyAmplitudes.slice(0, 12).map(fa => fa.frequency)
-    console.log(`Top frequencies: ${topFrequencies.map(f => f.toFixed(1)).join(', ')}`)
-
-    return topFrequencies
+    const result = fundamentals.map(p => p.frequency)
+    console.log(`Fundamentals: ${result.map(f => f.toFixed(1)).join(', ')}`)
+    return result
 }
 
 /**
@@ -116,4 +109,35 @@ export function calculateAdaptiveThreshold(
 
     const maxAmplitude = Math.max(...frequencyData)
     return Math.max(minThreshold, maxAmplitude * thresholdRatio)
+}
+
+/**
+ * Filter out harmonic peaks keeping likely fundamentals
+ */
+export function filterHarmonicPeaks(
+    peaks: FrequencyPeak[],
+    options: { maxMultiple?: number; toleranceCents?: number } = {}
+): FrequencyPeak[] {
+    const { maxMultiple = 6, toleranceCents = 35 } = options
+    const fundamentals: FrequencyPeak[] = []
+
+    for (const peak of peaks) {
+        let isHarmonic = false
+        for (const base of fundamentals) {
+            for (let k = 2; k <= maxMultiple; k++) {
+                const ratio = peak.frequency / (base.frequency * k)
+                const cents = 1200 * Math.log2(ratio)
+                if (Math.abs(cents) <= toleranceCents) {
+                    isHarmonic = true
+                    break
+                }
+            }
+            if (isHarmonic) break
+        }
+        if (!isHarmonic) fundamentals.push(peak)
+        // Limit to a reasonable number of fundamentals for a chord
+        if (fundamentals.length >= 8) break
+    }
+
+    return fundamentals
 }

@@ -85,13 +85,41 @@ export async function analyzeAudio(audioBlob: Blob, expectedChord: ChordShape): 
         console.log(`Audio analysis completed in ${analysisTime.toFixed(2)}ms`)
         console.log('Detected chords:', detectedChords)
 
-        // Compare using pitch class only, ignore "major"/"minor" in name
-        const expectedName = expectedChord.name.toLowerCase().replace(/ major| minor/, "")
-        const isCorrect = detectedChords.some(detected =>
-            detected.chord.toLowerCase().replace(/ major| minor/, "").includes(expectedName)
-        )
+        // Normalize expected and detected chord names for robust comparison
+        const normalize = (name: string): string => {
+            const lower = name.trim().toLowerCase()
+            // Extract root (A-G with optional #/b)
+            const rootMatch = lower.match(/^[a-g](#|b)?/)
+            const root = rootMatch ? rootMatch[0] : lower
 
-        console.log(`Expected: ${expectedName}, Match found: ${isCorrect}`)
+            // Quality detection priority: maj7, m7, 7, sus2, sus4, minor, major
+            if (/(maj7|major\s*7)/.test(lower)) return `${root}maj7`
+            if (/(m7|minor\s*7)/.test(lower)) return `${root}m7`
+            if (/sus2/.test(lower)) return `${root}sus2`
+            if (/sus4/.test(lower)) return `${root}sus4`
+            if (/\b7\b/.test(lower)) return `${root}7`
+            if (/\bminor\b/.test(lower)) return `${root}m`
+            if (/\bmajor\b/.test(lower)) return `${root}`
+
+            // Already condensed forms like "am", "cmaj7", etc.
+            return lower.replace(/\s+/g, '')
+        }
+
+        const expectedNormalized = normalize(expectedChord.name)
+        const isCorrect = detectedChords.some((detected) => {
+            const detectedNormalized = normalize(detected.chord)
+            // Exact match first
+            if (detectedNormalized === expectedNormalized) return true
+            // For plain major triads, accept any variant with same root (e.g., C, C/E)
+            const triadMatch = expectedNormalized.match(/^([a-g](#|b)?)$/)
+            if (triadMatch) {
+                const root = triadMatch[1]
+                return detectedNormalized.startsWith(root)
+            }
+            return false
+        })
+
+        console.log(`Expected: ${expectedNormalized}, Match found: ${isCorrect}`)
 
         analyzer.dispose()
         return isCorrect

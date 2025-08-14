@@ -13,6 +13,7 @@ export function detectChordsFromNotes(notes: string[]): ChordDetectionResult[] {
         return []
     }
 
+    console.log('notes', notes);
     const normalizedNotes = normalizeNotes(notes)
     console.log(`Normalized notes: [${normalizedNotes.join(', ')}]`)
 
@@ -21,7 +22,15 @@ export function detectChordsFromNotes(notes: string[]): ChordDetectionResult[] {
         return []
     }
 
-    const detected = Chord.detect(normalizedNotes)
+    // First attempt with all notes
+    let detected = Chord.detect(normalizedNotes)
+    // If not found, try with a refined subset to eliminate spurious notes
+    if (!detected.length) {
+        const refined = refineNotesForChordDetection(normalizedNotes)
+        if (refined.length >= 3) {
+            detected = Chord.detect(refined)
+        }
+    }
     console.log(`Chord.detect() found ${detected.length} possible chords:`, detected)
 
     const bestMatch = detected[0]
@@ -57,13 +66,37 @@ export function detectChordsFromNotes(notes: string[]): ChordDetectionResult[] {
  * Calculate confidence score for chord detection
  */
 export function calculateConfidence(detectedNotes: string[], chordNotes: string[]): number {
-    let matches = 0
-    detectedNotes.forEach(note => {
+    if (chordNotes.length === 0) return 0
+
+    // Partial credit to near-miss notes: if detected note is within a semitone of any chord note
+    const semitoneAdjacency: Record<string, string[]> = {
+        'C': ['B', 'Db'],
+        'Db': ['C', 'D'],
+        'D': ['Db', 'Eb'],
+        'Eb': ['D', 'E'],
+        'E': ['Eb', 'F'],
+        'F': ['E', 'Gb'],
+        'Gb': ['F', 'G'],
+        'G': ['Gb', 'Ab'],
+        'Ab': ['G', 'A'],
+        'A': ['Ab', 'Bb'],
+        'Bb': ['A', 'B'],
+        'B': ['Bb', 'C']
+    }
+
+    let score = 0
+    for (const note of detectedNotes) {
         if (chordNotes.includes(note)) {
-            matches++
+            score += 1
+            continue
         }
-    })
-    return matches / chordNotes.length
+        const neighbors = semitoneAdjacency[note] || []
+        if (neighbors.some(n => chordNotes.includes(n))) {
+            score += 0.4
+        }
+    }
+
+    return score / chordNotes.length
 }
 
 /**
@@ -75,7 +108,13 @@ export function analyzeChordFromNotes(notes: string[]): ChordDetectionResult | n
     const normalizedNotes = normalizeNotes(notes)
     if (normalizedNotes.length < 3) return null
 
-    const detected = Chord.detect(normalizedNotes)
+    let detected = Chord.detect(normalizedNotes)
+    if (!detected.length) {
+        const refined = refineNotesForChordDetection(normalizedNotes)
+        if (refined.length >= 3) {
+            detected = Chord.detect(refined)
+        }
+    }
     if (!detected.length) return null
 
     const bestMatch = detected[0]
@@ -108,4 +147,53 @@ export function getAllPossibleChords(notes: string[]): string[] {
  */
 export function getChordInfo(chordName: string) {
     return Chord.get(chordName)
+}
+
+/**
+ * Select a subset of notes most likely to form a valid chord (filters noisy extras).
+ */
+export function refineNotesForChordDetection(notes: string[]): string[] {
+    const uniqueNotes = Array.from(new Set(notes))
+    const limited = uniqueNotes.slice(0, 6)
+
+    // Try 4-note then 3-note combinations
+    const sizes = [4, 3]
+    let bestSubset: string[] = []
+    let bestScore = -Infinity
+
+    for (const size of sizes) {
+        for (const subset of combinations(limited, size)) {
+            const candidates = Chord.detect(subset)
+            if (candidates.length) {
+                const chordInfo = Chord.get(candidates[0]!)
+                const chordNotes = chordInfo?.notes ?? []
+                const matchCount = subset.filter(n => chordNotes.includes(n)).length
+                const confidence = matchCount / (chordNotes.length || subset.length)
+                const score = confidence * 100 + (chordNotes.length || 0) * 10
+                if (score > bestScore) {
+                    bestScore = score
+                    bestSubset = subset
+                }
+            }
+        }
+        if (bestSubset.length) break
+    }
+
+    return bestSubset.length ? bestSubset : limited
+}
+
+function combinations<T>(arr: T[], k: number): T[][] {
+    const result: T[][] = []
+    const n = arr.length
+    if (k > n || k <= 0) return result
+    const idx = Array.from({ length: k }, (_, i) => i)
+    while (true) {
+        result.push(idx.map(i => arr[i]!))
+        let i = k - 1
+        while (i >= 0 && idx[i]! === i + n - k) i--
+        if (i < 0) break
+        idx[i]!++
+        for (let j = i + 1; j < k; j++) idx[j] = idx[j - 1]! + 1
+    }
+    return result
 }
