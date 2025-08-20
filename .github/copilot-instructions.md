@@ -137,3 +137,15 @@ import type { Chord } from '@/lib/chords'
 - Follow the established patterns for component structure
 - Use the existing chord data structures and APIs
 - Remember to dispose of audio resources properly
+
+## When doing code review
+- Review each changed file, except the real big file like pnpm-lock.yaml
+- Check if the code is following the established patterns
+- Check if the code is following the established coding standards
+- Check if the code is following the established testing guidelines
+- Check if the code is following the established performance considerations
+- Check if the code is following the established error handling patterns
+- Check if the code is following the established development commands
+- Check if the code is following the established import patterns
+- Check if the code is following the established file naming conventions
+- Check performance implications
