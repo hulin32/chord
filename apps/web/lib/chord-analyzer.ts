@@ -113,15 +113,39 @@ export async function analyzeAudio(audioBlob: Blob, expectedChord: ChordShape): 
 
             // For minor chords (like Em), accept variants with same root and minor quality
             const minorMatch = expectedNormalized.match(/^([a-g](#|b)?)m$/)
-            if (minorMatch) {
+            if (minorMatch && minorMatch[1]) {
                 const root = minorMatch[1]
                 // Accept Em, Em/G, Em/B, etc. - any minor chord with E root
                 return detectedNormalized.startsWith(root) && detectedNormalized.includes('m')
             }
 
+            // For 7th chords (like A7), accept variants with same root and 7th quality
+            const seventhMatch = expectedNormalized.match(/^([a-g](#|b)?)7$/)
+            if (seventhMatch && seventhMatch[1]) {
+                const root = seventhMatch[1]
+                // Accept A7, A7/G, A7/C, etc. - any 7th chord with A root
+                return detectedNormalized.startsWith(root) && detectedNormalized.includes('7')
+            }
+
+            // For maj7 chords (like Amaj7), accept variants with same root and maj7 quality
+            const maj7Match = expectedNormalized.match(/^([a-g](#|b)?)maj7$/)
+            if (maj7Match && maj7Match[1]) {
+                const root = maj7Match[1]
+                // Accept Amaj7, Amaj7/G, etc. - any maj7 chord with A root
+                return detectedNormalized.startsWith(root) && detectedNormalized.includes('maj7')
+            }
+
+            // For m7 chords (like Am7), accept variants with same root and m7 quality
+            const m7Match = expectedNormalized.match(/^([a-g](#|b)?)m7$/)
+            if (m7Match && m7Match[1]) {
+                const root = m7Match[1]
+                // Accept Am7, Am7/G, etc. - any m7 chord with A root
+                return detectedNormalized.startsWith(root) && detectedNormalized.includes('m7')
+            }
+
             // For plain major triads, accept any variant with same root (e.g., C, C/E)
             const triadMatch = expectedNormalized.match(/^([a-g](#|b)?)$/)
-            if (triadMatch) {
+            if (triadMatch && triadMatch[1]) {
                 const root = triadMatch[1]
                 return detectedNormalized.startsWith(root)
             }

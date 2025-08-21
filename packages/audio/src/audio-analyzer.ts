@@ -170,6 +170,5 @@ export class AudioAnalyzer {
         this.microphone?.disconnect()
         this.analyser?.disconnect()
         this.audioContext?.close()
-        this.fftAnalyzer.dispose()
     }
 }

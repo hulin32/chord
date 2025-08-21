@@ -5,7 +5,6 @@ import { extractDominantFrequenciesFromFFT } from '@workspace/music-theory'
  * FFT-based frequency analysis using Web Audio API
  */
 export class FFTAnalyzer {
-    private offlineContext: OfflineAudioContext | null = null
 
     /**
      * Extract frequencies using Web Audio API's FFT analysis
@@ -21,18 +20,8 @@ export class FFTAnalyzer {
         // Use the fallback, windowed peak extraction on PCM data for robust results with recorded guitar audio
         return extractFrequenciesFromAudioData(channelData, audioBuffer.sampleRate)
     }
-
-    /**
-     * Clean up resources
-     */
-    dispose(): void {
-        this.offlineContext = null
-    }
 }
 
-/**
- * Extract frequencies from raw audio data (fallback method)
- */
 export function extractFrequenciesFromAudioData(channelData: Float32Array, sampleRate: number): Frequency[] {
     console.log('Using fallback frequency extraction method')
     if (!channelData || channelData.length === 0) {
@@ -151,26 +140,4 @@ function goertzelMagnitude(samples: Float32Array, sampleRate: number, targetFreq
     const real = q1 - q2 * cosine
     const imag = q2 * sine
     return Math.sqrt(real * real + imag * imag)
-}
-
-/**
- * Estimate frequency from zero crossings (fallback method)
- */
-function estimateFrequency(data: Float32Array, centerIndex: number, sampleRate: number): Frequency {
-    const windowSize = 256
-    const start = Math.max(0, centerIndex - windowSize)
-    const end = Math.min(data.length, centerIndex + windowSize)
-
-    let zeroCrossings = 0
-    for (let i = start; i < end - 1; i++) {
-        if ((data[i] || 0) * (data[i + 1] || 0) < 0) {
-            zeroCrossings++
-        }
-    }
-
-    // Frequency estimate based on zero crossings
-    const crossingsPerPeriod = 2
-    const periodSamples = zeroCrossings > 0 ? (end - start) / (zeroCrossings / crossingsPerPeriod) : Infinity
-    if (!isFinite(periodSamples) || periodSamples <= 0) return 0
-    return sampleRate / periodSamples
 }
