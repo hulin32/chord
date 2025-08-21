@@ -110,12 +110,22 @@ export async function analyzeAudio(audioBlob: Blob, expectedChord: ChordShape): 
             const detectedNormalized = normalize(detected.chord)
             // Exact match first
             if (detectedNormalized === expectedNormalized) return true
+
+            // For minor chords (like Em), accept variants with same root and minor quality
+            const minorMatch = expectedNormalized.match(/^([a-g](#|b)?)m$/)
+            if (minorMatch) {
+                const root = minorMatch[1]
+                // Accept Em, Em/G, Em/B, etc. - any minor chord with E root
+                return detectedNormalized.startsWith(root) && detectedNormalized.includes('m')
+            }
+
             // For plain major triads, accept any variant with same root (e.g., C, C/E)
             const triadMatch = expectedNormalized.match(/^([a-g](#|b)?)$/)
             if (triadMatch) {
                 const root = triadMatch[1]
                 return detectedNormalized.startsWith(root)
             }
+
             return false
         })
 
