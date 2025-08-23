@@ -8,7 +8,10 @@ import {
     detectChordsFromNotes,
     analyzeChordFromNotes,
     getAllPossibleChords,
-    getChordInfo
+    getChordInfo,
+    findFrequencyPeaks,
+    calculateAdaptiveThreshold,
+    filterHarmonicPeaks
 } from '@workspace/music-theory'
 import { FFTAnalyzer } from './fft-analyzer'
 
@@ -96,28 +99,21 @@ export class AudioAnalyzer {
      * Extract dominant frequencies from audio data
      */
     private extractDominantFrequencies(dataArray: Uint8Array): number[] {
-        const frequencies: number[] = []
         const sampleRate = this.audioContext?.sampleRate || 44100
-        const binSize = sampleRate / (this.analyser?.fftSize || 2048)
+        const fftSize = this.analyser?.fftSize || 2048
 
-        // Find peaks in the frequency spectrum
-        for (let i = 1; i < dataArray.length - 1; i++) {
-            const current = dataArray[i]!
-            const previous = dataArray[i - 1]!
-            const next = dataArray[i + 1]!
+        // Adaptive thresholding and peak finding
+        const threshold = calculateAdaptiveThreshold(dataArray, { minThreshold: 30, thresholdRatio: 0.25 })
+        const peaks = findFrequencyPeaks(dataArray, sampleRate, fftSize, {
+            minAmplitude: threshold,
+            minProminence: 5,
+            minFrequency: 80,
+            maxFrequency: 2000
+        })
 
-            // Check if this is a peak and has sufficient amplitude
-            if (current > previous && current > next && current > 50) {
-                const frequency = i * binSize
-                // Focus on musical frequencies (roughly 80Hz to 2000Hz)
-                if (frequency >= 80 && frequency <= 2000) {
-                    frequencies.push(frequency)
-                }
-            }
-        }
-
-        // Return top frequencies
-        return frequencies.slice(0, 8)
+        // Filter out harmonic overtones to keep likely fundamentals
+        const fundamentals = filterHarmonicPeaks(peaks, { maxMultiple: 6, toleranceCents: 35 })
+        return fundamentals.slice(0, 8).map(p => p.frequency)
     }
 
     /**
@@ -174,6 +170,5 @@ export class AudioAnalyzer {
         this.microphone?.disconnect()
         this.analyser?.disconnect()
         this.audioContext?.close()
-        this.fftAnalyzer.dispose()
     }
 }
